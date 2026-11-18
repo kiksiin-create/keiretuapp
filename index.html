@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>北神総合 系列選択ナビ</title>
+    <style>
+        :root {
+            --primary-color: #0066cc;
+            --bg-color: #f4f7f6;
+            --card-bg: #ffffff;
+            --text-color: #333333;
+            --border-color: #e0e0e0;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+        }
+        /* サイドバー開閉ボタン（左上に固定） */
+        .sidebar-toggle-btn {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            z-index: 1001;
+            background-color: #ffffff;
+            color: #2c3e50;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 8px 14px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: background-color 0.2s, transform 0.1s;
+        }
+        .sidebar-toggle-btn:hover {
+            background-color: #f0f4f8;
+        }
+        .sidebar-toggle-btn:active {
+            transform: scale(0.97);
+        }
+
+        /* 背景の暗いオーバーレイ */
+        .sidebar-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.4);
+            z-index: 999;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        .sidebar-overlay.open {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        /* にゅっと出てくるサイドバー（ドロワー） */
+        .drawer-sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 300px;
+            max-width: 82vw;
+            height: 100vh;
+            background: #ffffff;
+            border-right: 1px solid var(--border-color);
+            padding: 20px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            overflow-y: auto;
+            z-index: 1000;
+            box-shadow: 4px 0 20px rgba(0,0,0,0.15);
+            /* 初期状態は左の外側に隠す */
+            transform: translateX(-100%);
+            transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+        /* openクラスがつくとにゅっと出てくる */
+        .drawer-sidebar.open {
+            transform: translateX(0);
+        }
+        .sidebar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+        }
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 22px;
+            color: #666;
+            cursor: pointer;
+            padding: 0 5px;
+        }
+
+        /* メインコンテンツ */
+        main {
+            width: 100%;
+            max-width: 760px;
+            margin: 0 auto;
+            padding: 65px 20px 30px 20px; /* 上部のボタンと重ならないよう余白を確保 */
+            box-sizing: border-box;
+        }
+        .card {
+            background: var(--card-bg);
+            padding: 28px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+        }
+        h1 { font-size: 22px; color: #2c3e50; margin-top: 0; }
+        h2 { font-size: 18px; color: #34495e; }
+        h3 { font-size: 16px; color: #2c3e50; margin: 5px 0; }
+        p, li { font-size: 15px; line-height: 1.6; }
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 14px;
+            margin: 10px 0;
+            font-size: 15px;
+            font-weight: bold;
+            color: #fff;
+            background-color: var(--primary-color);
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: center;
+            transition: opacity 0.2s;
+        }
+        .btn:hover { opacity: 0.9; }
+        .btn-secondary { background-color: #6c757d; }
+        .btn-danger { background-color: #dc3545; }
+        .btn-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        .info-box {
+            background-color: #e2f0cb;
+            border-left: 5px solid #55a630;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+        .warning-box {
+            background-color: #fff3cd;
+            border-left: 5px solid #ffc107;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+        .zyugyou-img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 15px 0;
+            border: 1px solid #ddd;
+        }
+        .progress-bar-container {
+            width: 100%;
+            background-color: #e9ecef;
+            border-radius: 5px;
+            overflow: hidden;
+            margin-bottom: 10px;
+            height: 10px;
+        }
+        .progress-bar {
+            height: 100%;
+            background-color: #28a745;
+            width: 0%;
+            transition: width 0.3s;
+        }
+        ul { padding-left: 20px; margin: 5px 0; }
+        hr { border: none; border-top: 1px solid var(--border-color); margin: 12px 0; }
+    </style>
+</head>
+<body>
+
+<!-- 左上のサイドバー開閉ボタン -->
+<button class="sidebar-toggle-btn" onclick="toggleSidebar()">
+    <span>☰</span> リンク・履歴
+</button>
+
+<!-- 背景オーバーレイ（タップで閉じる） -->
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+<!-- にゅっと出てくるサイドバー -->
+<aside class="drawer-sidebar" id="drawer-sidebar">
+    <div class="sidebar-header">
+        <h2 style="margin: 0; font-size: 18px;">🔗 リンク・情報</h2>
+        <button class="close-btn" onclick="toggleSidebar()" aria-label="閉じる">×</button>
+    </div>
+
+    <p style="font-size: 13px; color: #555; background: #f8f9fa; padding: 10px; border-radius: 6px; margin: 0;">
+        このアプリは新入生が自分の興味・関心に合わせて系列を考えるためのガイドです。
+    </p>
+    
+    <hr>
+    <h3>📜 診断履歴</h3>
+    <div id="sidebar-history" style="font-size: 14px; color: #444;">履歴はまだありません</div>
+
+    <hr>
+    <h3>📖 学校公式リンク</h3>
+    <ul style="font-size: 13px; padding-left: 18px; line-height: 1.8;">
+        <li><a href="https://dmzcms.hyogo-c.ed.jp/kitakobesogo-hs/NC3/" target="_blank">北神戸総合高校 HP</a></li>
+        <li><a href="https://dmzcms.hyogo-c.ed.jp/kitakobesogo-hs/NC3/wysiwyg/file/download/1/151" target="_blank">学校案内パンフレット</a></li>
+        <li><a href="https://www.instagram.com/kitakobe_kiks.pr/?hl=ja" target="_blank">KIKS委員公式Instagram</a></li>
+        <li><a href="https://www.instagram.com/kiks_soft.tennis_club01/" target="_blank">男子ソフトテニス</a></li>
+        <li><a href="https://www.instagram.com/kiks1__soft_tennis/" target="_blank">女子ソフトテニス</a></li>
+        <li><a href="https://www.instagram.com/kiks_ttc/" target="_blank">卓球部</a></li>
+        <li><a href="https://www.instagram.com/kiks._.tf1/" target="_blank">陸上競技部一期生</a></li>
+        <li><a href="https://www.instagram.com/kiksss2_tf/?hl=ja" target="_blank">陸上競技部二期生</a></li>
+        <li><a href="https://www.instagram.com/kikssyashinbu/" target="_blank">写真部</a></li>
+        <li><a href="https://www.instagram.com/kiks_hbc_official/" target="_blank">放送部</a></li>
+    </ul>
+
+    <hr>
+    <button class="btn btn-secondary" onclick="resetApp(); toggleSidebar();">🔄 アプリをリセット</button>
+</aside>
+
+<!-- メインコンテンツ -->
+<main>
+    <div class="card" id="app-content">
+        <!-- 動的に画面が切り替わります -->
+    </div>
+    <div id="back-button-container"></div>
+</main>
+
+<script>
+    // --- サイドバー開閉処理 ---
+    function toggleSidebar() {
+        const sidebar = document.getElementById('drawer-sidebar');
+        const overlay = document.getElementById('sidebar-overlay');
+        sidebar.classList.toggle('open');
+        overlay.classList.toggle('open');
+    }
+
+    // --- データ定義 ---
+    const DESCRIPTIONS = {
+        "宇宙・気象系列": "めざせ宇宙！守れ地球！の理数学習を進める。宇宙・気象への興味関心を高め、人類が今後目指すことになる宇宙に関連した産業や、地球の気候をふまえた暮らしや産業をリードする人材を育成する。",
+        "DX系列": "ＡＩやＩｏＴを始めとするデジタル技術を活用して、産業社会における製品やサービス、ビジネスモデルそのものを変革する等、新たな価値を創造する人材を育成する。",
+        "ひょうごからスタートアップ系列": "豊かな観光資源に恵まれた兵庫の魅力について学び、それを生かした仕事の創出やまちおこし、観光ビジネスに力を発揮できる、アントレプレナーシップを有する人材を育成する。",
+        "スポーツ・アウトドアと防災系列": "スポーツやアウトドアアクティビティといった活動と、防災活動、ボランティア活動、スポーツビジネスといった人間の社会生活を結びつけ、新たな価値や生きがいを創出することのできる人材を育成する。",
+        "ダイバーシティー&インクルージョン系列": "文化や年齢・様々な特性等を超えて、多様な人々と関わり理解し合うための学びを通じて、互いを認め合い生かし合えるグローバルなビジネスや文化、共生社会の担い手となる人材を育成する。",
+        "リベラルアーツ理系系列": "理数教育を軸としつつ、幅広い視野を養います。複雑化する社会の諸問題に対して数理・科学的な多角的視点を持ってアプローチし、自分らしく生きるための教養を身に付ける。",
+        "リベラルアーツ文系系列": "普通科の教育課程に準じた科目配置に加えて、芸術系の科目や「キャリア探究」を設置し、複雑化する社会の諸問題に対して様々な視点を持ち、自分らしく生きるための基本となる教養を身に付ける。"
+    };
+
+    const KEYWORDS = {
+        "宇宙・気象系列": ["宇宙開発", "環境保護", "気象観測", "理数探究"],
+        "DX系列": ["プログラミング", "AI活用", "ビジネス変革", "論理的思考"],
+        "ひょうごからスタートアップ系列": ["地域創生", "起業家精神", "観光ビジネス", "企画力"],
+        "スポーツ・アウトドアと防災系列": ["リーダーシップ", "野外活動", "地域防災", "健康科学"],
+        "ダイバーシティー&インクルージョン系列": ["国際理解", "共生社会", "多様性", "コミュニケーション"],
+        "リベラルアーツ理系系列": ["幅広い教養", "芸術的感性", "キャリア探究", "理系基礎"],
+        "リベラルアーツ文系系列": ["多角的視点", "文化・芸術", "自己探究", "文系基礎"]
+    };
+
+    const SCHOOL_TIPS = [
+        "色々なクラブ活動に参加して、新しい友達を作ろう！",
+        "先生や先輩に気軽に質問してみよう。きっと新しい発見があるよ！",
+        "興味のあることには積極的に挑戦しよう。それが未来につながる第一歩！",
+        "図書館や自習室を活用して、自分のペースで学習を進めよう。",
+        "ボランティア活動に参加して、地域とのつながりを深めよう！"
+    ];
+
+    const QUESTIONS = [
+        { question: "Q1. グラフ・表などのデータから傾向や変化を読み取ることが好きだ", track: "宇宙・気象系列" },
+        { question: "Q2. 天気・宇宙などに興味がある", track: "宇宙・気象系列" },
+        { question: "Q3. 数学の計算や公式を使って、問題を解くことに抵抗がない", track: "宇宙・気象系列" },
+        { question: "Q4. 夜空の星や天体観測、気象現象の仕組みについて調べるのが好きだ", track: "宇宙・気象系列" },
+        { question: "Q5. 地球温暖化や気候変動などの環境問題に関心がある", track: "宇宙・気象系列" },
+        { question: "Q6. パソコン・スマートフォン操作が得意だ", track: "DX系列" },
+        { question: "Q7. 将来Web・アプリ・ゲームに関係する職に就きたいと思う", track: "DX系列" },
+        { question: "Q8. 「こんなサービスがあったらいいのに」など新しいものを考えるのが好きだ", track: "DX系列" },
+        { question: "Q9. プログラミングやIT技術を使って何かを作ってみたい", track: "DX系列" },
+        { question: "Q10. AI（人工知能）や最新テクノロジーの進化にワクワクする", track: "DX系列" },
+        { question: "Q11. 地元の魅力をみんなに知ってもらいたい！", track: "ひょうごからスタートアップ系列" },
+        { question: "Q12. イベントやサービスの企画がとても好きだ", track: "ひょうごからスタートアップ系列" },
+        { question: "Q13. 将来起業することに興味がある", track: "ひょうごからスタートアップ系列" },
+        { question: "Q14. 地域の課題を解決するための新しいアイデアを出すのが得意だ", track: "ひょうごからスタートアップ系列" },
+        { question: "Q15. 商品の開発やマーケティング、ビジネスの仕組みに興味がある", track: "ひょうごからスタートアップ系列" },
+        { question: "Q16. 体を動かすことがとても好きだ", track: "スポーツ・アウトドアと防災系列" },
+        { question: "Q17. 地震や豪雨などの自然災害時に人を助けたりすることに興味がある", track: "スポーツ・アウトドアと防災系列" },
+        { question: "Q18. グループで協力して課題や活動に取り組むことが好きだ", track: "スポーツ・アウトドアと防災系列" },
+        { question: "Q19. キャンプやハイキングなど野外・アウトドア活動が好きだ", track: "スポーツ・アウトドアと防災系列" },
+        { question: "Q20. 応急手当や救急救命・防災グッズの知識を身につけたい", track: "スポーツ・アウトドアと防災系列" },
+        { question: "Q21. 当たり前のことになぜ？と疑問を持てる", track: "ダイバーシティー&インクルージョン系列" },
+        { question: "Q22. 自分と違う考え方の人の意見に興味がある", track: "ダイバーシティー&インクルージョン系列" },
+        { question: "Q23. 一つの問題に様々な立場の人の意見を考えることができる", track: "ダイバーシティー&インクルージョン系列" },
+        { question: "Q24. 海外の文化や外国語でのコミュニケーションに興味がある", track: "ダイバーシティー&インクルージョン系列" },
+        { question: "Q25. 看護・医療・福祉など人の役に立つ仕事に関心がある", track: "ダイバーシティー&インクルージョン系列" },
+        { question: "Q26. 「なぜそうなるか」を、理由や仕組みから理解することが好き", track: "リベラルアーツ理系系列" },
+        { question: "Q27. 将来理系の大学に進みたいが分野が決まっていない", track: "リベラルアーツ理系系列" },
+        { question: "Q28. 仮説をたてて試行錯誤しながら答えを導くのが好きだ", track: "リベラルアーツ理系系列" },
+        { question: "Q29. 物理・化学・生物などの実験や観察をするのが好きだ", track: "リベラルアーツ理系系列" },
+        { question: "Q30. 幅広い理系知識を学びながら将来の進路をじっくり見つけたい", track: "リベラルアーツ理系系列" },
+        { question: "Q31. 自分の考えを文章で表すことが好きだ", track: "リベラルアーツ文系系列" },
+        { question: "Q32. 将来文系の大学に進みたいが分野が決まっていない", track: "リベラルアーツ文系系列" },
+        { question: "Q33. 言語学や社会学に興味がある", track: "リベラルアーツ文系系列" },
+        { question: "Q34. 本を読むことや歴史・人間・社会のニュースについて考えるのが好きだ", track: "リベラルアーツ文系系列" },
+        { question: "Q35. 幅広い文系知識を学びながら自分のやりたいことを見つけたい", track: "リベラルアーツ文系系列" }
+    ];
+
+    const DECIDED_OPTIONS = [
+        { text: "宇宙・理学・気象・データ解析系", track: "宇宙・気象系列" },
+        { text: "IT・情報・Web・ゲームアプリ系", track: "DX系列" },
+        { text: "経営・経済・地域創生・ビジネス企画系", track: "ひょうごからスタートアップ系列" },
+        { text: "スポーツ・健康・防災・社会安全系", track: "スポーツ・アウトドアと防災系列" },
+        { text: "社会学・国際共生・福祉・人権系", track: "ダイバーシティー&インクルージョン系列" },
+        { text: "理系全般（まだ具体的な学科を絞りたくない）", track: "リベラルアーツ理系系列" },
+        { text: "文系全般（まだ具体的な学科を絞りたくない）", track: "リベラルアーツ文系系列" }
+    ];
+
+    // --- 状態管理 ---
+    let currentStep = 'start';
+    let historySteps = ['start'];
+    let diagnosisHistory = [];
+    let qIdx = 0;
+    let scores = {};
+
+    function resetScores() {
+        scores = {
+            "宇宙・気象系列": 0, "DX系列": 0, "リベラルアーツ理系系列": 0,
+            "ひょうごからスタートアップ系列": 0, "スポーツ・アウトドアと防災系列": 0,
+            "ダイバーシティー&インクルージョン系列": 0, "リベラルアーツ文系系列": 0
+        };
+    }
+    resetScores();
+
+    const randomTip = SCHOOL_TIPS[Math.floor(Math.random() * SCHOOL_TIPS.length)];
+
+    function moveTo(nextStep) {
+        historySteps.push(nextStep);
+        currentStep = nextStep;
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        render();
+    }
+
+    function goBack() {
+        if (historySteps.length > 1) {
+            historySteps.pop();
+            currentStep = historySteps[historySteps.length - 1];
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            render();
+        }
+    }
+
+    function resetApp() {
+        currentStep = 'start';
+        historySteps = ['start'];
+        qIdx = 0;
+        resetScores();
+        render();
+    }
+
+    // --- 画面描画ロジック ---
+    function render() {
+        const content = document.getElementById('app-content');
+        let html = `<h1>🎓 系列になやむ人のための系列選択ナビ</h1>`;
+
+        let progressMap = { 'IE': 10, 'IIE': 5, 'NOT': 5, 'quiz': Math.round(((qIdx + 1) / QUESTIONS.length) * 80), 'suki': 99, 'tiga': 0, 'tya': 0, 'goal': 100 };
+        if (progressMap[currentStep] !== undefined) {
+            let prog = progressMap[currentStep];
+            html += `
+                <div class="progress-bar-container"><div class="progress-bar" style="width: ${prog}%"></div></div>
+                <p style="font-size: 13px; color: #666; margin-bottom: 20px;">診断の進み具合: ${prog}%</p>
+            `;
+        }
+
+        // 1. スタート画面
+        if (currentStep === 'start') {
+            html += `
+                <h2>北神戸総合高校へようこそ！</h2>
+                <p>あなたの未来をデザインする「系列選択」をお手伝いします。</p>
+                <div class="info-box">💡 <strong>あなたへのヒント</strong><br>${randomTip}</div>
+                <div class="btn-grid">
+                    <button class="btn" onclick="moveTo('IE')">診断を始める</button>
+                    <button class="btn btn-secondary" onclick="moveTo('NO')">系列（天・地・人）の説明を見る</button>
+                </div>
+                <div style="margin-top: 10px;">
+                    <button class="btn btn-secondary" onclick="toggleSidebar()">📸 KIKSの活動・公式リンクを見る（サイドバーを開く）</button>
+                </div>
+            `;
+        }
+        // 2. 系列解説トップ (NO)
+        else if (currentStep === 'NO') {
+            html += `
+                <h2>KIKS系列体系「天・地・人」</h2>
+                <p>本校の学びは、大きく3つの視点に分かれています。解説を選んでください。</p>
+                <div class="btn-grid">
+                    <button class="btn" onclick="moveTo('tennkaisetu')">✨ 天の学び</button>
+                    <button class="btn" onclick="moveTo('tikaisetu')">🌍 地の学び</button>
+                    <button class="btn" onclick="moveTo('zinnkaisetu')" style="grid-column: span 2;">🤝 人の学び</button>
+                </div>
+            `;
+        }
+        // 各種解説ページ
+        else if (currentStep === 'tennkaisetu') {
+            html += `<h2>✨ 天の学び</h2>
+                <div class="btn-grid">
+                    <button class="btn" onclick="moveTo('utyuukaisetu')">宇宙・気象系列</button>
+                    <button class="btn" onclick="moveTo('DXkaisetu')">DX系列</button>
+                </div>`;
+        }
+        else if (currentStep === 'utyuukaisetu') {
+            html += `<div class="info-box"><h2>宇宙・気象系列</h2><p>${DESCRIPTIONS['宇宙・気象系列']}</p></div>
+                <p><strong>📚特徴的なカリキュラム</strong><br>&emsp;宇宙と気象<br>&emsp;宇宙と開発<br>&emsp;古典と気象</p>
+                <img src="utyuu.zyugyou.png" class="zyugyou-img" alt="宇宙・気象系列の授業内容">
+                <p><strong>・進路</strong><br>&emsp;数学・理科を中心としたカリキュラム✨<br>&emsp;国公立・私立大学の理学部・工学部をめざすことができる系列<br><strong>・私立大学</strong><br>&emsp;関西学院大学の理学部など<br><strong>・国公立大学</strong><br>&emsp;兵庫県立大学の理学部など</p>`;
+        }
+        else if (currentStep === 'DXkaisetu') {
+            html += `<div class="info-box"><h2>DX系列</h2><p>${DESCRIPTIONS['DX系列']}</p></div>
+                <p><strong>📚特徴的なカリキュラム</strong><br>&emsp;情報Ⅱ<br>&emsp;情報システムのプログラミング<br>&emsp;ネットワークシステム</p>
+                <img src="DX.zyugyou.png" class="zyugyou-img" alt="DX系列の授業内容">
+                <p><strong>・進路</strong><br>&emsp;数学・理科・情報を中心としたカリキュラム✨<br>&emsp;国公立・私立大学の情報系学部をめざすことができる系列<br><strong>・私立大学</strong><br>&emsp;大阪電気通信大学、大和大学の情報学部など<br><strong>・専門学校</strong><br>&emsp;神戸電子専門学校、神戸甲陽デザイン&テクノロジー専門学校など</p>`;
+        }
+        else if (currentStep === 'tikaisetu') {
+            html += `<h2>🌍 地の学び</h2>
+                <div class="btn-grid">
+                    <button class="btn" onclick="moveTo('hyogokaisetu')">ひょうごからスタートアップ系列</button>
+                    <button class="btn" onclick="moveTo('autodoakaisetu')">スポーツ・アウトドアと防災系列</button>
+                </div>`;
+        }
+        else if (currentStep === 'hyogokaisetu') {
+            html += `<div class="info-box" style="background-color:#d4edda; border-color:#28a745;"><h2>ひょうごからスタートアップ系列</h2><p>${DESCRIPTIONS['ひょうごからスタートアップ系列']}</p></div>
+                <p><strong>📚特徴的なカリキュラム</strong><br>&emsp;ひょうごからスタートアップ<br>&emsp;観光ビジネス<br>&emsp;マーケティング</p>
+                <img src="hyousuta.zyugyou.png" class="zyugyou-img" alt="ひょうごからスタートアップ系列の授業内容">
+                <p><strong>・進路</strong><br>&emsp;社会・英語・商業を中心としたカリキュラム✨<br>&emsp;国公立・私立大学の経営系学部や公務員・起業家をめざすことができる系列<br><strong>・私立大学</strong><br>&emsp;武庫川大学、甲南大学、立命館大学など</p>`;
+        }
+        else if (currentStep === 'autodoakaisetu') {
+            html += `<div class="info-box" style="background-color:#d4edda; border-color:#28a745;"><h2>スポーツ・アウトドアと防災系列</h2><p>${DESCRIPTIONS['スポーツ・アウトドアと防災系列']}</p></div>
+                <p><strong>📚特徴的なカリキュラム</strong><br>&emsp;アウトドア防災<br>&emsp;スポーツⅠ<br>&emsp;生涯スポーツ</p>
+                <img src="supobou.zyugyou.png" class="zyugyou-img" alt="スポーツ・アウトドアと防災系列の授業内容">
+                <p><strong>・進路</strong><br>&emsp;社会・英語・体育を中心としたカリキュラム✨<br>&emsp;国公立・私立大学の教育系学部・公務員をめざすことができる系列<br><strong>・私立大学</strong><br>&emsp;甲南大学、武庫川大学など</p>`;
+        }
+        else if (currentStep === 'zinnkaisetu') {
+            html += `<h2>🤝 人の学び</h2>
+                <div class="btn-grid">
+                    <button class="btn" onclick="moveTo('daibakaisetu')">ダイバーシティ＆インクルージョン系列</button>
+                    <button class="btn" onclick="moveTo('riberikaisetu')">リベラルアーツ系列</button>
+                </div>`;
+        }
+        else if (currentStep === 'daibakaisetu') {
+            html += `<div class="warning-box"><h2>ダイバーシティ＆インクルージョン系列</h2><p>${DESCRIPTIONS['ダイバーシティー&インクルージョン系列']}</p></div>
+                <p><strong>📚特徴的なカリキュラム</strong><br>&emsp;ウェルビーイング<br>&emsp;舞台芸術とコミュニケーション<br>&emsp;韓国朝鮮語・中国語<br>&emsp;キャリア探求</p>
+                <img src="daiba.zyugyou.png" class="zyugyou-img" alt="ダイバーシティーの授業内容">
+                <p><strong>・進路</strong><br>&emsp;英語・国語・家庭を中心としたカリキュラム✨<br>&emsp;国公立・私立大学の国際・教育系学部をめざすことができる系列<br><strong>・国公立大学</strong><br>&emsp;神戸市外国語大学など<br><strong>・私立大学</strong><br>&emsp;神戸女子大学、同志社大学など</p>`;
+        }
+        else if (currentStep === 'riberikaisetu') {
+            html += `<div class="warning-box"><h2>リベラルアーツ系列</h2><p>${DESCRIPTIONS['リベラルアーツ文系系列']}</p></div>
+                <p><strong>📚特徴的なカリキュラム</strong><br>・リベラルアーツ理系系列: 物理・化学・生物・地理、数学B・C、古典探究<br>・リベラルアーツ文系系列: 日本史・世界史、芸術科目、英語実践、キャリア探究</p>
+                <img src="rireraru.zyugyou.png" class="zyugyou-img" alt="リベラルアーツの授業内容">
+                <p><strong>・進路</strong><br>&emsp;国公立・私立の理系・文系大学、専門学校を幅広くめざせる系列</p>`;
+        }
+        // --- 最初の質問ループ ---
+        else if (currentStep === 'IE') {
+            html += `<h2>Q1. 北神戸総合高校は好きですか？</h2>
+                <button class="btn" onclick="moveTo('branch')">はい!</button>
+                <button class="btn btn-secondary" onclick="moveTo('NOT')">いいえ</button>`;
+        }
+        else if (currentStep === 'NOT') {
+            html += `<h2>Q1. 本当に好きじゃないですか？</h2>
+                <button class="btn" onclick="moveTo('IIE')">はい</button>
+                <button class="btn btn-secondary" onclick="moveTo('branch')">いいえ</button>`;
+        }
+        else if (currentStep === 'IIE') {
+            html += `<h2>Q1. 本当にそうですか？</h2>
+                <button class="btn" onclick="moveTo('NOT')">はい</button>
+                <button class="btn btn-secondary" onclick="moveTo('branch')">いいえ</button>`;
+        }
+        // --- 分岐選択 ---
+        else if (currentStep === 'branch') {
+            html += `<h2>進学希望について教えてください</h2>
+                <p>教えて！進学したい大学や学びたい分野は、もう具体的に決まっているかな？</p>
+                <button class="btn" onclick="moveTo('decided_select')">はい！決まっている✨<br><small>(目的の分野から指定)</small></button>
+                <button class="btn btn-secondary" onclick="qIdx=0; resetScores(); moveTo('quiz')">まだ探している！🤔<br><small>(質問に答えて診断)</small></button>`;
+        }
+        else if (currentStep === 'decided_select') {
+            html += `<h2>志望分野の選択</h2><p>進学したい大学の学部や学びたい分野の方向性はどれに近い？</p>`;
+            DECIDED_OPTIONS.forEach(opt => {
+                html += `<button class="btn" onclick="scores['${opt['track']}']=12; moveTo('goal')">${opt['text']}</button>`;
+            });
+        }
+        // --- 35問の診断クイズ ---
+        else if (currentStep === 'quiz') {
+            let q = QUESTIONS[qIdx];
+            html += `
+                <p style="color: #666; font-weight: bold;">質問 ${qIdx + 1} / ${QUESTIONS.length}</p>
+                <h2>${q.question}</h2>
+                <button class="btn" onclick="answer(4, '${q.track}')">とても当てはまる (+4pt)</button>
+                <button class="btn" onclick="answer(1, '${q.track}')">やや当てはまる (+1pt)</button>
+                <button class="btn btn-secondary" onclick="answer(-1, '${q.track}')">あまり当てはまらない (-1pt)</button>
+                <button class="btn btn-danger" onclick="answer(-2, '${q.track}')">全く当てはまらない (-2pt)</button>
+            `;
+        }
+        // --- 後半の質問ループ ---
+        else if (currentStep === 'suki') {
+            html += `<h2>Q1. 診断を終了しますか？</h2>
+                <button class="btn" onclick="moveTo('goal')">はい!</button>`;
+        }
+               // --- 結果画面 ---
+        else if (currentStep === 'goal') {
+            let highestSeries = Object.keys(scores).reduce((a, b) => scores[a] > scores[b] ? a : b);
+            
+            if (diagnosisHistory.length === 0 || diagnosisHistory[diagnosisHistory.length - 1] !== highestSeries) {
+                diagnosisHistory.push(highestSeries);
+            }
+
+            let desc = DESCRIPTIONS[highestSeries];
+            let keywords = KEYWORDS[highestSeries] || [];
+
+            html += `
+                <h2>🎉 診断完了！あなたにおすすめなのは…</h2>
+                <div class="info-box" style="text-align: center;">
+                    <h1 style="color: #d90429; margin: 10px 0;">🌟 【${highestSeries}】</h1>
+                    <p>${desc}</p>
+                </div>
+                <h3>🔍 この系列に向いているキーワード</h3>
+                <p>${keywords.map(k => `✅ ${k}`).join(' &nbsp; ')}</p>
+                <hr>
+                <p style="font-size: 13px; color: #666;">※あくまでもKIKS委員の偏見に基づいているので、今回の診断は参考程度に留めておいてくださいね！</p>
+                <h3>📊 キミの診断結果スコア</h3>
+                <ul style="list-style: none; padding: 0;">
+                    ${Object.entries(scores).map(([s, sc]) => `<li>- ${s}: ${sc}点</li>`).join('')}
+                </ul>
+                <hr>
+                <button class="btn" onclick="resetApp()">最初からやり直す</button>
+            `;
+        }
+
+        content.innerHTML = html;
+
+        let backContainer = document.getElementById('back-button-container');
+        if (currentStep !== 'start' && currentStep !== 'goal') {
+            backContainer.innerHTML = `<button class="btn btn-secondary" style="margin-top: 10px;" onclick="goBack()">← 前の画面に戻る</button>`;
+        } else {
+            backContainer.innerHTML = '';
+        }
+
+        let historyEl = document.getElementById('sidebar-history');
+        if (diagnosisHistory.length > 0) {
+            let rev = [...diagnosisHistory].reverse();
+            historyEl.innerHTML = rev.map((item, idx) => `${diagnosisHistory.length - idx}. ${item}`).join('<br>');
+        } else {
+            historyEl.innerHTML = "履歴はまだありません";
+        }
+    }
+
+    function answer(pts, track) {
+        scores[track] += pts;
+        qIdx++;
+        if (qIdx < QUESTIONS.length) {
+            render();
+        } else {
+            moveTo('suki');
+        }
+    }
+
+    render();
+</script>
+
+</body>
+</html>
