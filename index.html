@@ -497,7 +497,8 @@
             });
         }
         // --- 35問の診断クイズ ---
-        else if (currentStep === 'quiz') {
+        // --- 35問の診断クイズ ---
+　　　　　else if (currentStep === 'quiz') {
             let q = QUESTIONS[qIdx];
             html += `
                 <p style="color: #666; font-weight: bold;">質問 ${qIdx + 1} / ${QUESTIONS.length}</p>
@@ -507,7 +508,8 @@
                 <button class="btn btn-secondary" onclick="answer(-1, '${q.track}')">あまり当てはまらない (-1pt)</button>
                 <button class="btn btn-danger" onclick="answer(-2, '${q.track}')">全く当てはまらない (-2pt)</button>
             `;
-        }
+　　　　　}
+
         // --- 後半の質問ループ ---
         else if (currentStep === 'suki') {
             html += `<h2>Q1. 診断を終了しますか？</h2>
