@@ -393,8 +393,57 @@
                     <button class="btn btn-secondary" onclick="moveTo('NO')">系列（天・地・人）の説明を見る</button>
                 </div>
                 <div style="margin-top: 10px;">
-                    <button class="btn btn-secondary" onclick="toggleSidebar()">📸 KIKSの活動・公式リンクを見る（サイドバーを開く）</button>
+                    <button class="btn btn-secondary" onclick="moveTo('katsudou_select')">📸 活動を見る</button>
                 </div>
+            `;
+        }
+        // --- 活動の選択画面（KIKSの活動 / KIKS委員の活動） ---
+        else if (currentStep === 'katsudou_select') {
+            html += `
+                <h2>📸 活動紹介</h2>
+                <p>見たい活動を選んでください。</p>
+                <div class="btn-grid">
+                    <button class="btn" onclick="moveTo('kiks_katsudou')">🏫 KIKSの活動を見る</button>
+                    <button class="btn" onclick="moveTo('kiks_iin_katsudou')">✨ KIKS委員の活動を見る</button>
+                </div>
+                <hr>
+                <button class="btn btn-secondary" onclick="toggleSidebar()">🔗 公式Instagram・HPリンクを開く</button>
+            `;
+        }
+        // --- KIKSの活動 詳細ページ ---
+        else if (currentStep === 'kiks_katsudou') {
+            html += `
+                <div class="info-box">
+                    <h2>🏫 KIKSの活動</h2>
+                    <p>北神戸総合高校（KIKS）では、7つの系列に分かれてそれぞれの専門分野や探究活動に取り組んでいます！</p>
+                </div>
+                <p><strong>🌟 主な取り組み</strong><br>
+                ・各系列の専門的な授業やフィールドワーク<br>
+                ・地域と連携したプロジェクト学習<br>
+                ・文化祭や発表会での成果発表</p>
+                <!-- 画像を入れたい場合は下の行のコメントを外してファイル名を入れてね -->
+                <!-- <img src="kiks_katsudou.png" class="zyugyou-img" alt="KIKSの活動"> -->
+                <hr>
+                <button class="btn btn-secondary" onclick="toggleSidebar()">📸 部活動や学校の公式Instagramを見る</button>
+            `;
+        }
+        // --- KIKS委員の活動 詳細ページ ---
+        else if (currentStep === 'kiks_iin_katsudou') {
+            html += `
+                <div class="warning-box">
+                    <h2>✨ KIKS委員の活動</h2>
+                    <p>KIKS委員は、学校の魅力を広めたり、新入生や在校生の学校生活をサポートしたりする生徒の委員会です！</p>
+                </div>
+                <p><strong>🌟 主な取り組み</strong><br>
+                ・新入生向けの「系列選択ナビ」アプリの開発・運営<br>
+                ・公式Instagramでの学校生活や行事の情報発信<br>
+                ・オープンハイスクールや学校説明会での案内・PR活動</p>
+                <!-- 画像を入れたい場合は下の行のコメントを外してファイル名を入れてね -->
+                <!-- <img src="kiks_iin.png" class="zyugyou-img" alt="KIKS委員の活動"> -->
+                <hr>
+                <a href="https://www.instagram.com/kitakobe_kiks.pr/?hl=ja" target="_blank" style="text-decoration: none;">
+                    <button class="btn">📱 KIKS委員公式Instagramを見る</button>
+                </a>
             `;
         }
         // 2. 系列解説トップ (NO)
