@@ -231,6 +231,108 @@
     <hr>
     <button class="btn btn-secondary" onclick="resetApp(); toggleSidebar();">🔄 アプリをリセット</button>
 </aside>
+<!-- Firebase SDKの読み込みとデータベース連携処理 -->
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    // ★ここに自分のFirebase設定を貼り付ける（未設定でもデモで動きます）
+    const firebaseConfig = {
+        apiKey: "YOUR_API_KEY",
+        authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+        projectId: "YOUR_PROJECT_ID",
+        storageBucket: "YOUR_PROJECT_ID.appspot.com",
+        messagingSenderId: "YOUR_SENDER_ID",
+        appId: "YOUR_APP_ID"
+    };
+
+    const ADMIN_PASS = "2026"; // 管理者パスワード
+
+    let db = null;
+    try {
+        if (firebaseConfig.apiKey !== "YOUR_API_KEY") {
+            const app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+        }
+    } catch (e) {
+        console.error("Firebase初期化エラー:", e);
+    }
+
+    window.fetchPostsFromDB = async function(categoryFilter) {
+        if (!db) {
+            return [{
+                id: "demo",
+                category: categoryFilter,
+                title: "【デモ表示】Firebase未設定です",
+                content: "firebaseConfigを設定すると全員で共有できる投稿が表示されます！",
+                dateStr: "システム通知"
+            }];
+        }
+        try {
+            const q = query(collection(db, "kiks_activities"), orderBy("createdAt", "desc"));
+            const querySnapshot = await getDocs(q);
+            const results = [];
+            querySnapshot.forEach((docSnap) => {
+                const data = docSnap.data();
+                if (!categoryFilter || data.category === categoryFilter) {
+                    results.push({ id: docSnap.id, ...data });
+                }
+            });
+            return results;
+        } catch (e) {
+            return [];
+        }
+    };
+
+    window.submitNewPost = async function() {
+        const pass = document.getElementById('admin-pass').value;
+        if (pass !== ADMIN_PASS) {
+            alert("管理者パスワードが違います！");
+            return;
+        }
+        const category = document.getElementById('post-category').value;
+        const title = document.getElementById('post-title').value.trim();
+        const content = document.getElementById('post-content').value.trim();
+
+        if (!title || !content) {
+            alert("タイトルと内容を入力してください！");
+            return;
+        }
+        if (!db) {
+            alert("Firebaseの設定がされていません！");
+            return;
+        }
+
+        try {
+            const now = new Date();
+            const dateStr = `${now.getFullYear()}/${now.getMonth()+1}/${now.getDate()} ${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`;
+            await addDoc(collection(db, "kiks_activities"), {
+                category, title, content, dateStr,
+                createdAt: serverTimestamp()
+            });
+            alert("投稿しました！");
+            window.moveTo(category === 'kiks' ? 'kiks_katsudou' : 'kiks_iin_katsudou');
+        } catch (e) {
+            alert("エラー: " + e.message);
+        }
+    };
+
+    window.deletePostFromDB = async function(docId) {
+        if (!db || docId === "demo") return;
+        const pass = prompt("管理者パスワードを入力してください：");
+        if (pass !== ADMIN_PASS) {
+            if (pass !== null) alert("パスワードが違います。");
+            return;
+        }
+        try {
+            await deleteDoc(doc(db, "kiks_activities", docId));
+            alert("削除しました。");
+            window.render();
+        } catch (e) {
+            alert("削除エラー: " + e.message);
+        }
+    };
+</script>
 
 <!-- メインコンテンツ -->
 <main>
@@ -397,53 +499,89 @@
                 </div>
             `;
         }
-        // --- 活動の選択画面（KIKSの活動 / KIKS委員の活動） ---
+        // --- 活動の選択画面 ---
         else if (currentStep === 'katsudou_select') {
             html += `
-                <h2>📸 活動紹介</h2>
+                <h2>📸 活動紹介・リアルタイム報告</h2>
                 <p>見たい活動を選んでください。</p>
                 <div class="btn-grid">
                     <button class="btn" onclick="moveTo('kiks_katsudou')">🏫 KIKSの活動を見る</button>
                     <button class="btn" onclick="moveTo('kiks_iin_katsudou')">✨ KIKS委員の活動を見る</button>
                 </div>
                 <hr>
-                <button class="btn btn-secondary" onclick="toggleSidebar()">🔗 公式Instagram・HPリンクを開く</button>
+                <button class="btn btn-success" onclick="moveTo('post_form')">✍️ 活動を投稿する（委員・管理者用）</button>
             `;
         }
-        // --- KIKSの活動 詳細ページ ---
+        // --- KIKSの活動（DBから取得） ---
         else if (currentStep === 'kiks_katsudou') {
+            content.innerHTML = html + `<p>読み込み中...</p>`;
+            const posts = await window.fetchPostsFromDB('kiks');
             html += `
                 <div class="info-box">
                     <h2>🏫 KIKSの活動</h2>
-                    <p>北神戸総合高校（KIKS）では、7つの系列に分かれてそれぞれの専門分野や探究活動に取り組んでいます！</p>
+                    <p>各系列での探究活動や学校全体の取り組みをリアルタイムでお届けします！</p>
                 </div>
-                <p><strong>🌟 主な取り組み</strong><br>
-                ・各系列の専門的な授業やフィールドワーク<br>
-                ・地域と連携したプロジェクト学習<br>
-                ・文化祭や発表会での成果発表</p>
-                <!-- 画像を入れたい場合は下の行のコメントを外してファイル名を入れてね -->
-                <!-- <img src="kiks_katsudou.png" class="zyugyou-img" alt="KIKSの活動"> -->
+                <button class="btn btn-success" onclick="moveTo('post_form')">✍️ 新しい活動を投稿する</button>
                 <hr>
-                <button class="btn btn-secondary" onclick="toggleSidebar()">📸 部活動や学校の公式Instagramを見る</button>
+                <h3>📢 最新の活動レポート</h3>
             `;
+            if (posts.length === 0) {
+                html += `<p style="color: #666;">まだ投稿はありません。</p>`;
+            } else {
+                posts.forEach(p => {
+                    html += `
+                        <div style="background:#fff; border:1px solid #ddd; padding:15px; border-radius:8px; margin-bottom:10px;">
+                            <h3 style="margin-top:0; color:#0066cc;">${p.title}</h3>
+                            <p style="white-space:pre-wrap; margin:8px 0;">${p.content}</p>
+                            <small style="color:#888;">${p.dateStr || ''} | <span style="color:#dc3545; cursor:pointer;" onclick="deletePostFromDB('${p.id}')">[削除]</span></small>
+                        </div>
+                    `;
+                });
+            }
         }
-        // --- KIKS委員の活動 詳細ページ ---
+        // --- KIKS委員の活動（DBから取得） ---
         else if (currentStep === 'kiks_iin_katsudou') {
+            content.innerHTML = html + `<p>読み込み中...</p>`;
+            const posts = await window.fetchPostsFromDB('iin');
             html += `
                 <div class="warning-box">
                     <h2>✨ KIKS委員の活動</h2>
-                    <p>KIKS委員は、学校の魅力を広めたり、新入生や在校生の学校生活をサポートしたりする生徒の委員会です！</p>
+                    <p>学校の魅力発信やオープンハイスクール運営など、委員会の活動記録です！</p>
                 </div>
-                <p><strong>🌟 主な取り組み</strong><br>
-                ・新入生向けの「系列選択ナビ」アプリの開発・運営<br>
-                ・公式Instagramでの学校生活や行事の情報発信<br>
-                ・オープンハイスクールや学校説明会での案内・PR活動</p>
-                <!-- 画像を入れたい場合は下の行のコメントを外してファイル名を入れてね -->
-                <!-- <img src="kiks_iin.png" class="zyugyou-img" alt="KIKS委員の活動"> -->
+                <button class="btn btn-success" onclick="moveTo('post_form')">✍️ 委員の活動を投稿する</button>
                 <hr>
-                <a href="https://www.instagram.com/kitakobe_kiks.pr/?hl=ja" target="_blank" style="text-decoration: none;">
-                    <button class="btn">📱 KIKS委員公式Instagramを見る</button>
-                </a>
+                <h3>📢 委員の活動レポート</h3>
+            `;
+            if (posts.length === 0) {
+                html += `<p style="color: #666;">まだ投稿はありません。</p>`;
+            } else {
+                posts.forEach(p => {
+                    html += `
+                        <div style="background:#fff; border:1px solid #ddd; padding:15px; border-radius:8px; margin-bottom:10px;">
+                            <h3 style="margin-top:0; color:#0066cc;">${p.title}</h3>
+                            <p style="white-space:pre-wrap; margin:8px 0;">${p.content}</p>
+                            <small style="color:#888;">${p.dateStr || ''} | <span style="color:#dc3545; cursor:pointer;" onclick="deletePostFromDB('${p.id}')">[削除]</span></small>
+                        </div>
+                    `;
+                });
+            }
+        }
+        // --- 投稿フォーム画面 ---
+        else if (currentStep === 'post_form') {
+            html += `
+                <h2>✍️ 活動レポートを投稿する</h2>
+                <label style="font-weight:bold;">投稿先カテゴリー</label>
+                <select id="post-category" style="width:100%; padding:10px; margin-bottom:10px; border-radius:6px; border:1px solid #ccc;">
+                    <option value="kiks">🏫 KIKSの活動</option>
+                    <option value="iin">✨ KIKS委員の活動</option>
+                </select>
+                <label style="font-weight:bold;">タイトル</label>
+                <input type="text" id="post-title" placeholder="タイトルを入力" style="width:100%; padding:10px; margin-bottom:10px; border-radius:6px; border:1px solid #ccc; box-sizing:border-box;">
+                <label style="font-weight:bold;">活動内容</label>
+                <textarea id="post-content" placeholder="詳細を入力..." style="width:100%; height:100px; padding:10px; margin-bottom:10px; border-radius:6px; border:1px solid #ccc; box-sizing:border-box;"></textarea>
+                <label style="font-weight:bold;">管理者パスワード</label>
+                <input type="password" id="admin-pass" placeholder="初期値: 2026" style="width:100%; padding:10px; margin-bottom:15px; border-radius:6px; border:1px solid #ccc; box-sizing:border-box;">
+                <button class="btn btn-success" onclick="submitNewPost()">投稿する</button>
             `;
         }
         // 2. 系列解説トップ (NO)
