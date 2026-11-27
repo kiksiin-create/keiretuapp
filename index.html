@@ -445,56 +445,67 @@
                 </div>
             `;
         }
+// --- 活動を見る画面（系列解説風レイアウト） ---
+        else if (currentStep === 'kiks_katsudou' || currentStep === 'kiks_iin_katsudou') {
+            const isIin = (currentStep === 'kiks_iin_katsudou');
+            const categoryKey = isIin ? 'iin' : 'kiks';
+            const pageTitle = isIin ? '✨ KIKS委員の活動レポート' : '🏫 KIKSの活動レポート';
+            const pageDesc = isIin ? 'KIKS委員による企画・運営の取り組みを紹介します。' : '学校全体のKIKSの活動内容やイベントの様子を紹介します。';
 
-        // --- 活動を見る画面（系列解説風レイアウト） ---
-else if (currentStep === 'kiks_katsudou' || currentStep === 'kiks_iin_katsudou') {
-    const isIin = (currentStep === 'kiks_iin_katsudou');
-    const categoryKey = isIin ? 'iin' : 'kiks';
-    const pageTitle = isIin ? '✨ KIKS委員の活動レポート' : '🏫 KIKSの活動レポート';
-    const pageDesc = isIin ? 'KIKS委員による企画・運営の取り組みを紹介します。' : '学校全体のKIKSの活動内容やイベントの様子を紹介します。';
+            // まず読み込み中を表示
+            content.innerHTML = `<h2>${pageTitle}</h2><p style="text-align:center; padding:20px;">データを読み込み中...</p>`;
 
-    // 読み込み中表示を先に出す
-    appDiv.innerHTML = `<p style="text-align:center; padding:20px;">データを読み込み中...</p>`;
+            // Firestoreからデータを取得（※ここでawaitを使うため、もし関数全体にasyncが必要な場合は後述の注意を確認）
+            const posts = await window.fetchPostsFromDB(categoryKey);
 
-    // Firestoreからデータを取得
-    const posts = await window.fetchPostsFromDB(categoryKey);
+            let html = `
+                <h2>${pageTitle}</h2>
+                <p style="color:#666; font-size:0.9em; margin-bottom:15px;">${pageDesc}</p>
 
-    let html = `
-        <h2>${pageTitle}</h2>
-        <p style="color:#666; font-size:0.9em; margin-bottom:15px;">${pageDesc}</p>
-
-        <!-- 系列解説の切り替えボタンのような上部タブ -->
-        <div style="display:flex; gap:8px; margin-bottom:20px;">
-            <button class="btn ${!isIin ? '' : 'btn-secondary'}" style="flex:1; margin:0;" onclick="moveTo('kiks_katsudou')">🏫 KIKSの活動</button>
-            <button class="btn ${isIin ? '' : 'btn-secondary'}" style="flex:1; margin:0;" onclick="moveTo('kiks_iin_katsudou')">✨ 委員の活動</button>
-        </div>
-    `;
-
-    // 投稿が0件のとき
-    if (posts.length === 0) {
-        html += `
-            <div class="activity-card" style="text-align:center; border-left-color:#ccc;">
-                <p style="color:#777; margin:10px 0;">まだ活動レポートが投稿されていません。</p>
-            </div>
-        `;
-    } else {
-        // 1件ずつ「系列解説」風のカードとして並べる
-        posts.forEach(p => {
-            html += `
-                <div class="activity-card ${isIin ? 'iin' : ''}">
-                    <div class="activity-header">
-                        <h3 class="activity-title">${escapeHtml(p.title)}</h3>
-                        <span class="activity-badge">${isIin ? '委員活動' : 'KIKS活動'}</span>
-                    </div>
-                    <div class="activity-body">${escapeHtml(p.content)}</div>
-                    <div class="activity-footer">
-                        <span>📅 投稿日: ${p.dateStr || '日付なし'}</span>
-                        ${window.isLoggedIn() ? `<span style="color:#dc3545; cursor:pointer; font-weight:bold;" onclick="deletePostFromDB('${p.id}')">[削除する]</span>` : ''}
-                    </div>
+                <!-- 上部タブ切り替え -->
+                <div style="display:flex; gap:8px; margin-bottom:20px;">
+                    <button class="btn ${!isIin ? '' : 'btn-secondary'}" style="flex:1; margin:0;" onclick="moveTo('kiks_katsudou')">🏫 KIKSの活動</button>
+                    <button class="btn ${isIin ? '' : 'btn-secondary'}" style="flex:1; margin:0;" onclick="moveTo('kiks_iin_katsudou')">✨ 委員の活動</button>
                 </div>
             `;
-        });
-    }
+
+            if (posts.length === 0) {
+                html += `
+                    <div class="activity-card" style="text-align:center; border-left-color:#ccc;">
+                        <p style="color:#777; margin:10px 0;">まだ活動レポートが投稿されていません。</p>
+                    </div>
+                `;
+            } else {
+                posts.forEach(p => {
+                    html += `
+                        <div class="activity-card ${isIin ? 'iin' : ''}">
+                            <div class="activity-header">
+                                <h3 class="activity-title">${escapeHtml(p.title)}</h3>
+                                <span class="activity-badge">${isIin ? '委員活動' : 'KIKS活動'}</span>
+                            </div>
+                            <div class="activity-body">${escapeHtml(p.content)}</div>
+                            <div class="activity-footer">
+                                <span>📅 投稿日: ${p.dateStr || '日付なし'}</span>
+                                ${window.isLoggedIn() ? `<span style="color:#dc3545; cursor:pointer; font-weight:bold;" onclick="deletePostFromDB('${p.id}')">[削除する]</span>` : ''}
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+
+            html += `<div style="margin-top: 24px;">`;
+            if (window.isLoggedIn()) {
+                html += `<button class="btn btn-success" onclick="moveTo('post_form')">✍️ 新しい活動を投稿する</button>`;
+                html += `<button class="btn btn-danger" onclick="logoutAdmin()">🚪 ログアウト</button>`;
+            } else {
+                html += `<button class="btn btn-secondary" onclick="moveTo('login_form')">🔐 管理者ログイン</button>`;
+            }
+            html += `<button class="btn btn-secondary" onclick="moveTo('top')">🏠 トップに戻る</button>`;
+            html += `</div>`;
+
+            content.innerHTML = html;
+        }
+        
 
     // 下部のナビゲーションボタン（管理者ログイン中なら投稿ボタンも表示）
     html += `<div style="margin-top: 24px;">`;
