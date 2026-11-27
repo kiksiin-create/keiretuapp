@@ -291,6 +291,15 @@
 </main>
 
 <script>
+    // サイドバーの開閉を切り替える関数
+    function toggleSidebar() {
+        const sidebar = document.getElementById('drawer-sidebar');
+        const overlay = document.getElementById('sidebar-overlay');
+        if (sidebar && overlay) {
+            sidebar.classList.toggle('open');
+           overlay.classList.toggle('open');
+        }
+    }
     function escapeHtml(str) {
         if (!str) return '';
         return str.replace(/[&<>"']/g, m => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[m]));
