@@ -470,20 +470,25 @@
             const pageTitle = isIin ? '✨ KIKS委員の活動' : '🏫 KIKSの活動';
             const pageDesc = isIin ? 'KIKS委員による企画・運営の取り組みを紹介します。' : '学校全体のKIKSの活動内容やイベントの様子を紹介します。';
 
+            // 一度「読み込み中」を表示
+            content.innerHTML = `<h1>🎓 系列になやむ人のための系列選択ナビ</h1><div class="card"><h2>${pageTitle}</h2><p style="text-align:center; padding:20px;">データを読み込み中...</p></div>`;
+
             const posts = await window.fetchPostsFromDB(categoryKey);
 
-            let html = `
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                    <h2 style="margin:0;">${pageTitle}</h2>
-                    ${window.isLoggedIn() ? `<button class="btn" style="width:auto; padding:8px 14px; margin:0; font-size:13px; background-color:#28a745;" onclick="moveTo('post_form')">✍️ 投稿する</button>` : ''}
-                </div>
-                <p style="color:#666; font-size:0.9em; margin-bottom:15px;">${pageDesc}</p>
+            let html = `<h1>🎓 系列になやむ人のための系列選択ナビ</h1>`;
+            html += `
+                <div class="card">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                        <h2 style="margin:0;">${pageTitle}</h2>
+                        ${window.isLoggedIn() ? `<button class="btn" style="width:auto; padding:8px 14px; margin:0; font-size:13px; background-color:#28a745;" onclick="moveTo('post_form')">✍️ 投稿する</button>` : ''}
+                    </div>
+                    <p style="color:#666; font-size:0.9em; margin-bottom:15px;">${pageDesc}</p>
 
-                <!-- 上部タブ切り替え -->
-                <div style="display:flex; gap:8px; margin-bottom:20px;">
-                    <button class="btn ${!isIin ? '' : 'btn-secondary'}" style="flex:1; margin:0;" onclick="moveTo('kiks_katsudou')">🏫 KIKSの活動</button>
-                    <button class="btn ${isIin ? '' : 'btn-secondary'}" style="flex:1; margin:0;" onclick="moveTo('kiks_iin_katsudou')">✨ 委員の活動</button>
-                </div>
+                    <!-- 上部タブ切り替え -->
+                    <div style="display:flex; gap:8px; margin-bottom:20px;">
+                        <button class="btn ${!isIin ? '' : 'btn-secondary'}" style="flex:1; margin:0;" onclick="moveTo('kiks_katsudou')">🏫 KIKSの活動</button>
+                        <button class="btn ${isIin ? '' : 'btn-secondary'}" style="flex:1; margin:0;" onclick="moveTo('kiks_iin_katsudou')">✨ 委員の活動</button>
+                    </div>
             `;
 
             if (posts.length === 0) {
@@ -513,8 +518,10 @@
             html += `<div style="margin-top: 24px;">`;
             html += `<button class="btn btn-secondary" onclick="moveTo('start')">🏠 トップに戻る</button>`;
             html += `</div>`;
+            html += `</div>`; // .card の閉じタグ
 
             content.innerHTML = html;
+            return; // 処理をここで完結させる
         }
         
 
