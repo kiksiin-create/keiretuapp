@@ -186,6 +186,56 @@
         }
         ul { padding-left: 20px; margin: 5px 0; }
         hr { border: none; border-top: 1px solid var(--border-color); margin: 12px 0; }
+        /* 系列解説風の活動カードデザイン */
+        .activity-card {
+            background: #ffffff;
+            border-left: 5px solid #007bff; /* 左側にアクセントの太線（系列カラーに合わせて変更可） */
+            border-radius: 8px;
+            padding: 16px 20px;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+            text-align: left;
+         }
+         .activity-card.iin {
+            border-left-color: #28a745; /* 委員の活動は緑色など色分けもできる */
+         }
+         .activity-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 6px;
+         }
+         .activity-title {
+            font-size: 1.15em;
+            font-weight: bold;
+            color: #333;
+            margin: 0;
+        }
+        .activity-badge {
+            font-size: 0.75em;
+            padding: 3px 8px;
+            border-radius: 12px;
+            background: #e9ecef;
+            color: #555;
+            font-weight: bold;
+        }
+        .activity-body {
+            font-size: 0.95em;
+            line-height: 1.6;
+            color: #444;
+            white-space: pre-wrap; /* 改行をそのまま反映させる */
+            margin: 10px 0;
+        }
+        .activity-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.8em;
+            color: #888;
+            margin-top: 8px;
+        }
     </style>
 </head>
 <body>
@@ -241,13 +291,73 @@
 </main>
 
 <script>
-    // --- サイドバー開閉処理 ---
-    function toggleSidebar() {
-        const sidebar = document.getElementById('drawer-sidebar');
-        const overlay = document.getElementById('sidebar-overlay');
-        sidebar.classList.toggle('open');
-        overlay.classList.toggle('open');
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str.replace(/[&<>"']/g, m => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[m]));
     }
+    // --- 活動を見る画面（系列解説風レイアウト） ---
+else if (currentStep === 'kiks_katsudou' || currentStep === 'kiks_iin_katsudou') {
+    const isIin = (currentStep === 'kiks_iin_katsudou');
+    const categoryKey = isIin ? 'iin' : 'kiks';
+    const pageTitle = isIin ? '✨ KIKS委員の活動レポート' : '🏫 KIKSの活動レポート';
+    const pageDesc = isIin ? 'KIKS委員による企画・運営の取り組みを紹介します。' : '学校全体のKIKSの活動内容やイベントの様子を紹介します。';
+
+    // 読み込み中表示を先に出す
+    appDiv.innerHTML = `<p style="text-align:center; padding:20px;">データを読み込み中...</p>`;
+
+    // Firestoreからデータを取得
+    const posts = await window.fetchPostsFromDB(categoryKey);
+
+    let html = `
+        <h2>${pageTitle}</h2>
+        <p style="color:#666; font-size:0.9em; margin-bottom:15px;">${pageDesc}</p>
+
+        <!-- 系列解説の切り替えボタンのような上部タブ -->
+        <div style="display:flex; gap:8px; margin-bottom:20px;">
+            <button class="btn ${!isIin ? '' : 'btn-secondary'}" style="flex:1; margin:0;" onclick="moveTo('kiks_katsudou')">🏫 KIKSの活動</button>
+            <button class="btn ${isIin ? '' : 'btn-secondary'}" style="flex:1; margin:0;" onclick="moveTo('kiks_iin_katsudou')">✨ 委員の活動</button>
+        </div>
+    `;
+
+    // 投稿が0件のとき
+    if (posts.length === 0) {
+        html += `
+            <div class="activity-card" style="text-align:center; border-left-color:#ccc;">
+                <p style="color:#777; margin:10px 0;">まだ活動レポートが投稿されていません。</p>
+            </div>
+        `;
+    } else {
+        // 1件ずつ「系列解説」風のカードとして並べる
+        posts.forEach(p => {
+            html += `
+                <div class="activity-card ${isIin ? 'iin' : ''}">
+                    <div class="activity-header">
+                        <h3 class="activity-title">${escapeHtml(p.title)}</h3>
+                        <span class="activity-badge">${isIin ? '委員活動' : 'KIKS活動'}</span>
+                    </div>
+                    <div class="activity-body">${escapeHtml(p.content)}</div>
+                    <div class="activity-footer">
+                        <span>📅 投稿日: ${p.dateStr || '日付なし'}</span>
+                        ${window.isLoggedIn() ? `<span style="color:#dc3545; cursor:pointer; font-weight:bold;" onclick="deletePostFromDB('${p.id}')">[削除する]</span>` : ''}
+                    </div>
+                </div>
+            `;
+        });
+    }
+
+    // 下部のナビゲーションボタン（管理者ログイン中なら投稿ボタンも表示）
+    html += `<div style="margin-top: 24px;">`;
+    if (window.isLoggedIn()) {
+        html += `<button class="btn btn-success" onclick="moveTo('post_form')">✍️ 新しい活動を投稿する</button>`;
+        html += `<button class="btn btn-danger" onclick="logoutAdmin()">🚪 ログアウト</button>`;
+    } else {
+        html += `<button class="btn btn-secondary" onclick="moveTo('login_form')">🔐 管理者ログイン</button>`;
+    }
+    html += `<button class="btn btn-secondary" onclick="moveTo('top')">🏠 トップに戻る</button>`;
+    html += `</div>`;
+
+    appDiv.innerHTML = html;
+}
 
     // --- データ定義 ---
     const DESCRIPTIONS = {
