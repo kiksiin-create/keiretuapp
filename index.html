@@ -280,6 +280,7 @@
 
     <hr>
     <button class="btn btn-secondary" onclick="resetApp(); toggleSidebar();">🔄 アプリをリセット</button>
+    <div id="sidebar-auth-area"></div>
 </aside>
 
 <!-- メインコンテンツ -->
@@ -304,6 +305,14 @@
         if (!str) return '';
         return str.replace(/[&<>"']/g, m => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[m]));
     }
+
+    // エラー防止＆投稿0件（何もないです状態）にする処理
+    window.fetchPostsFromDB = async function(category) {
+        return []; // 空の配列を返すことで「まだ活動レポートが投稿されていません」を表示
+    };
+    window.isLoggedIn = function() {
+        return localStorage.getItem('kiks_admin') === 'true'; // ログイン状態の判定
+    };
     
 
     // --- データ定義 ---
@@ -679,6 +688,15 @@
             historyEl.innerHTML = rev.map((item, idx) => `${diagnosisHistory.length - idx}. ${item}`).join('<br>');
         } else {
             historyEl.innerHTML = "履歴はまだありません";
+        }
+        // サイドバーのログインボタン表示切り替え
+        const authArea = document.getElementById('sidebar-auth-area');
+        if (authArea) {
+            if (window.isLoggedIn()) {
+                authArea.innerHTML = `<button class="btn btn-danger" onclick="logoutAdmin(); toggleSidebar();">🚪 ログアウト</button>`;
+            } else {
+                authArea.innerHTML = `<button class="btn" onclick="moveTo('login_form'); toggleSidebar();">🔐 管理者ログイン</button>`;
+            }
         }
     }
 
