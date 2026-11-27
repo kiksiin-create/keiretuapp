@@ -507,20 +507,7 @@
         }
         
 
-    // 下部のナビゲーションボタン
-            html += `<div style="margin-top: 24px;">`;
-            if (window.isLoggedIn()) {
-                html += `<button class="btn btn-success" onclick="moveTo('post_form')">✍️ 新しい活動を投稿する</button>`;
-                html += `<button class="btn btn-danger" onclick="logoutAdmin()">🚪 ログアウト</button>`;
-            } else {
-                html += `<button class="btn btn-secondary" onclick="moveTo('login_form')">🔐 管理者ログイン</button>`;
-            }
-            html += `<button class="btn btn-secondary" onclick="moveTo('top')">🏠 トップに戻る</button>`;
-            html += `</div>`;
-
-            content.innerHTML = html;
-        }
-        
+    
         // 2. 系列解説トップ (NO)
         else if (currentStep === 'NO') {
             html += `
