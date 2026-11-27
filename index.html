@@ -515,6 +515,21 @@
             content.innerHTML = html;
         }
         
+        // 仮のデータ取得関数（データベースが繋がるまでのテスト用）
+        window.fetchPostsFromDB = async function(category) {
+            return [
+                {
+                    title: "新入生歓迎イベントを開催しました！",
+                    content: "今年度も多くの新入生に参加いただき、各系列の紹介や体験コーナーが大盛況でした。",
+                    dateStr: "2026-04-10"
+                },
+                {
+                    title: "KIKS委員からのメッセージ",
+                    content: "自分の興味がある系列を楽しく見つけられるように、これから色々な企画を準備しています！",
+                    dateStr: "2026-04-15"
+                }
+           ];
+        };
 
     
         // 2. 系列解説トップ (NO)
