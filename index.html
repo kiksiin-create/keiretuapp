@@ -306,13 +306,63 @@
         return str.replace(/[&<>"']/g, m => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[m]));
     }
 
-    // エラー防止＆投稿0件（何もないです状態）にする処理
+    // LocalStorageを使った活動データの管理（Firebase導入までの代わり）
+    let localPosts = JSON.parse(localStorage.getItem('kiks_posts') || '[{"id":"1","category":"kiks","title":"新入生向け系列説明会を開催","content":"各系列の特長や学びについて委員が分かりやすく解説しました。","dateStr":"2026-04-10"},{"id":"2","category":"iin","title":"KIKS委員だより発行","content":"今年度の委員の活動予定をお知らせします！","dateStr":"2026-04-15"}]');
+
     window.fetchPostsFromDB = async function(category) {
-        return []; // 空の配列を返すことで「まだ活動レポートが投稿されていません」を表示
+        return localPosts.filter(p => p.category === category);
     };
+
     window.isLoggedIn = function() {
-        return localStorage.getItem('kiks_admin') === 'true'; // ログイン状態の判定
+        return localStorage.getItem('kiks_admin') === 'true';
     };
+
+    function tryLogin() {
+        const pass = document.getElementById('admin-pass').value;
+        if (pass === 'admin') { // パスワードは必要に応じて変更可能
+            localStorage.setItem('kiks_admin', 'true');
+            alert('管理者としてログインしました！');
+            moveTo('kiks_katsudou');
+        } else {
+            alert('パスワードが違います');
+        }
+    }
+
+    function logoutAdmin() {
+        localStorage.removeItem('kiks_admin');
+        alert('ログアウトしました');
+        render();
+    }
+
+    window.submitPost = function() {
+        const category = document.getElementById('post-category').value;
+        const title = document.getElementById('post-title').value;
+        const content = document.getElementById('post-content').value;
+        if (!title || !content) {
+            alert('タイトルと内容を入力してください');
+            return;
+        }
+        const newPost = {
+            id: Date.now().toString(),
+            category,
+            title,
+            content,
+            dateStr: new Date().toISOString().split('T')[0]
+        };
+        localPosts.unshift(newPost);
+        localStorage.setItem('kiks_posts', JSON.stringify(localPosts));
+        alert('投稿しました！');
+        moveTo(category === 'iin' ? 'kiks_iin_katsudou' : 'kiks_katsudou');
+    };
+
+    window.deletePostFromDB = function(id) {
+        if (confirm('この投稿を削除しますか？')) {
+            localPosts = localPosts.filter(p => p.id !== id);
+            localStorage.setItem('kiks_posts', JSON.stringify(localPosts));
+            render();
+        }
+    };
+    
     
 
     // --- データ定義 ---
@@ -523,7 +573,39 @@
             content.innerHTML = html;
             return; // 処理をここで完結させる
         }
+
         
+        // --- 管理者ログイン画面 ---
+        else if (currentStep === 'login_form') {
+            html += `
+                <div class="card">
+                    <h2>🔐 管理者ログイン</h2>
+                    <p>管理者パスワードを入力してください。</p>
+                    <input type="password" id="admin-pass" class="btn" style="background:#fff; color:#333; border:1px solid #ccc; text-align:left; padding:10px; width:100%; box-sizing:border-box;" placeholder="パスワード (admin)">
+                    <button class="btn" onclick="tryLogin()">ログインする</button>
+                    <button class="btn btn-secondary" onclick="moveTo('kiks_katsudou')">キャンセル</button>
+                </div>
+            `;
+        }
+        // --- 新規投稿フォーム画面 ---
+        else if (currentStep === 'post_form') {
+            html += `
+                <div class="card">
+                    <h2>✍️ 新しい活動を投稿</h2>
+                    <label style="font-weight:bold; font-size:14px;">投稿先カテゴリ:</label>
+                    <select id="post-category" class="btn" style="background:#fff; color:#333; text-align:left; margin-bottom:15px; width:100%;">
+                        <option value="kiks">🏫 KIKSの活動</option>
+                        <option value="iin">✨ KIKS委員の活動</option>
+                    </select>
+                    <label style="font-weight:bold; font-size:14px;">タイトル:</label>
+                    <input type="text" id="post-title" class="btn" style="background:#fff; color:#333; border:1px solid #ccc; text-align:left; padding:10px; width:100%; box-sizing:border-box; margin-bottom:15px;" placeholder="タイトルを入力">
+                    <label style="font-weight:bold; font-size:14px;">内容:</label>
+                    <textarea id="post-content" class="btn" style="background:#fff; color:#333; border:1px solid #ccc; text-align:left; padding:10px; width:100%; height:120px; box-sizing:border-box; margin-bottom:15px;" placeholder="活動の内容を入力"></textarea>
+                    <button class="btn" style="background-color:#28a745;" onclick="submitPost()">投稿を保存する</button>
+                    <button class="btn btn-secondary" onclick="moveTo('kiks_katsudou')">キャンセル</button>
+                </div>
+            `;
+        }
 
     
         // 2. 系列解説トップ (NO)
