@@ -291,14 +291,30 @@
     <div id="back-button-container"></div>
 </main>
 
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 <script>
-    // サイドバーの開閉を切り替える関数
+    // --- Firebase 設定 & 初期化 ---
+    const firebaseConfig = {
+        apiKey: "AIzaSyAQbVwLyXJA6_TPyarCNL0wSqETdXCfzra",
+        authDomain: "kiks-keiretuaap.firebaseapp.com",
+        projectId: "kiks-keiretuaap",
+        storageBucket: "kiks-keiretuaap.firebasestorage.app",
+        messagingSenderId: "1089407290859",
+        appId: "1:1089407290859:web:a1d587a74b8b100a811dae",
+        measurementId: "G-XTKYV2TTRF"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    // --- サイドバーの開閉を切り替える関数 ---
     function toggleSidebar() {
         const sidebar = document.getElementById('drawer-sidebar');
         const overlay = document.getElementById('sidebar-overlay');
         if (sidebar && overlay) {
             sidebar.classList.toggle('open');
-           overlay.classList.toggle('open');
+            overlay.classList.toggle('open');
         }
     }
     function escapeHtml(str) {
@@ -306,16 +322,19 @@
         return str.replace(/[&<>"']/g, m => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[m]));
     }
 
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-app.js";
-    import { getAnalytics } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-analytics.js";
-    // ▼ ここを追加
-    import { getFirestore } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
-
-    // LocalStorageを使った活動データの管理（Firebase導入までの代わり）
-    let localPosts = JSON.parse(localStorage.getItem('kiks_posts') || '[{"id":"1","category":"kiks","title":"新入生向け系列説明会を開催","content":"各系列の特長や学びについて委員が分かりやすく解説しました。","dateStr":"2026-04-10"},{"id":"2","category":"iin","title":"KIKS委員だより発行","content":"今年度の委員の活動予定をお知らせします！","dateStr":"2026-04-15"}]');
-
+    // --- Firebaseからデータを取得する関数（他デバイスと共有） ---
     window.fetchPostsFromDB = async function(category) {
-        return localPosts.filter(p => p.category === category);
+        try {
+            const snapshot = await db.collection("posts").where("category", "==", category).get();
+            let posts = [];
+            snapshot.forEach(doc => {
+                posts.push({ id: doc.id, ...doc.data() });
+            });
+            return posts;
+        } catch (e) {
+            console.error("データ取得エラー:", e);
+            return [];
+        }
     };
 
     window.isLoggedIn = function() {
@@ -324,7 +343,7 @@
 
     function tryLogin() {
         const pass = document.getElementById('admin-pass').value;
-        if (pass === 'admin') { // パスワードは必要に応じて変更可能
+        if (pass === 'admin') {
             localStorage.setItem('kiks_admin', 'true');
             alert('管理者としてログインしました！');
             moveTo('kiks_katsudou');
@@ -339,7 +358,8 @@
         render();
     }
 
-    window.submitPost = function() {
+    // --- Firebaseに新しい投稿を保存する関数 ---
+    window.submitPost = async function() {
         const category = document.getElementById('post-category').value;
         const title = document.getElementById('post-title').value;
         const content = document.getElementById('post-content').value;
@@ -347,28 +367,34 @@
             alert('タイトルと内容を入力してください');
             return;
         }
-        const newPost = {
-            id: Date.now().toString(),
-            category,
-            title,
-            content,
-            dateStr: new Date().toISOString().split('T')[0]
-        };
-        localPosts.unshift(newPost);
-        localStorage.setItem('kiks_posts', JSON.stringify(localPosts));
-        alert('投稿しました！');
-        moveTo(category === 'iin' ? 'kiks_iin_katsudou' : 'kiks_katsudou');
-    };
-
-    window.deletePostFromDB = function(id) {
-        if (confirm('この投稿を削除しますか？')) {
-            localPosts = localPosts.filter(p => p.id !== id);
-            localStorage.setItem('kiks_posts', JSON.stringify(localPosts));
-            render();
+        try {
+            await db.collection("posts").add({
+                category,
+                title,
+                content,
+                dateStr: new Date().toISOString().split('T')[0],
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            alert('投稿しました！');
+            moveTo(category === 'iin' ? 'kiks_iin_katsudou' : 'kiks_katsudou');
+        } catch (e) {
+            console.error("投稿エラー:", e);
+            alert('投稿に失敗しました');
         }
     };
-    
-    
+
+    // --- Firebaseから投稿を削除する関数（他デバイスにも反映） ---
+    window.deletePostFromDB = async function(id) {
+        if (confirm('この投稿を削除しますか？')) {
+            try {
+                await db.collection("posts").doc(id).delete();
+                render();
+            } catch (e) {
+                console.error("削除エラー:", e);
+                alert('削除に失敗しました');
+            }
+        }
+    };
 
     // --- データ定義 ---
     const DESCRIPTIONS = {
@@ -525,7 +551,6 @@
             const pageTitle = isIin ? '✨ KIKS委員の活動' : '🏫 KIKSの活動';
             const pageDesc = isIin ? 'KIKS委員による企画・運営の取り組みを紹介します。' : '学校全体のKIKSの活動内容やイベントの様子を紹介します。';
 
-            // 一度「読み込み中」を表示
             content.innerHTML = `<h1>🎓 系列になやむ人のための系列選択ナビ</h1><div class="card"><h2>${pageTitle}</h2><p style="text-align:center; padding:20px;">データを読み込み中...</p></div>`;
 
             const posts = await window.fetchPostsFromDB(categoryKey);
@@ -573,17 +598,11 @@
             html += `<div style="margin-top: 24px;">`;
             html += `<button class="btn btn-secondary" onclick="moveTo('start')">🏠 トップに戻る</button>`;
             html += `</div>`;
-            html += `</div>`; // .card の閉じタグ
+            html += `</div>`;
 
             content.innerHTML = html;
-            return; // 処理をここで完結させる
+            return;
         }
-
-        // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const analytics = getAnalytics(app);
-        // ▼ ここを追加（これでデータベースが使えるようになります）
-        const db = getFirestore(app);
         // --- 管理者ログイン画面 ---
         else if (currentStep === 'login_form') {
             html += `
@@ -615,8 +634,6 @@
                 </div>
             `;
         }
-
-    
         // 2. 系列解説トップ (NO)
         else if (currentStep === 'NO') {
             html += `
@@ -716,7 +733,7 @@
                 html += `<button class="btn" onclick="scores['${opt['track']}']=12; moveTo('goal')">${opt['text']}</button>`;
             });
         }
-        // --- 35問の診断クイズ（ボタン名とポイント数を別行・別列に分離） ---
+        // --- 35問の診断クイズ ---
         else if (currentStep === 'quiz') {
             let q = QUESTIONS[qIdx];
             html += `
@@ -728,7 +745,6 @@
                 <button class="btn" onclick="answer(-2, '${q.track}')">全く当てはまらない</button>
             `;
         }
-
         // --- 後半の質問ループ ---
         else if (currentStep === 'suki') {
             html += `<h2>Q1. 診断を終了しますか？</h2>
@@ -780,6 +796,7 @@
         } else {
             historyEl.innerHTML = "履歴はまだありません";
         }
+
         // サイドバーのログインボタン表示切り替え
         const authArea = document.getElementById('sidebar-auth-area');
         if (authArea) {
