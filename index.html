@@ -381,15 +381,29 @@
         const category = document.getElementById('post-category').value;
         const title = document.getElementById('post-title').value;
         const content = document.getElementById('post-content').value;
+        const imageInput = document.getElementById('post-image');
+        const submitBtn = document.getElementById('submit-post-btn');
+
         if (!title || !content) {
             alert('タイトルと内容を入力してください');
             return;
         }
+
         try {
+            submitBtn.disabled = true;
+            submitBtn.textContent = '送信中...';
+
+            let imageData = '';
+            // 画像が選択されている場合はリサイズして変換
+            if (imageInput && imageInput.files && imageInput.files[0]) {
+                imageData = await resizeImageToBase64(imageInput.files[0]);
+            }
+
             await db.collection("posts").add({
                 category,
                 title,
                 content,
+                imageUrl: imageData, // 画像データを追加
                 dateStr: new Date().toISOString().split('T')[0],
                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
             });
@@ -397,7 +411,9 @@
             moveTo(category === 'iin' ? 'kiks_iin_katsudou' : 'kiks_katsudou');
         } catch (e) {
             console.error("投稿エラー:", e);
-            alert('投稿に失敗しました');
+            alert('投稿に失敗しました（画像サイズが大きすぎる可能性があります）');
+            submitBtn.disabled = false;
+            submitBtn.textContent = '投稿を保存する';
         }
     };
 
@@ -621,6 +637,20 @@
             content.innerHTML = html;
             return;
         }
+        // 選んだ画像のプレビュー表示
+        window.previewSelectedImage = function(input) {
+            const preview = document.getElementById('image-preview');
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                };
+                reader.readAsDataURL(input.files[0]);
+            } else {
+                preview.style.display = 'none';
+            }
+        };
         // --- 管理者ログイン画面 ---
         else if (currentStep === 'login_form') {
             html += `
@@ -651,9 +681,14 @@
                     </select>
                     <label style="font-weight:bold; font-size:14px;">タイトル:</label>
                     <input type="text" id="post-title" class="btn" style="background:#fff; color:#333; border:1px solid #ccc; text-align:left; padding:10px; width:100%; box-sizing:border-box; margin-bottom:15px;" placeholder="タイトルを入力">
+                    
+                    <label style="font-weight:bold; font-size:14px;">写真（任意）:</label>
+                    <input type="file" id="post-image" accept="image/*" style="display:block; margin: 8px 0 15px 0;" onchange="previewSelectedImage(this)">
+                    <img id="image-preview" style="max-width:100%; max-height:200px; display:none; border-radius:8px; margin-bottom:15px; border:1px solid #ddd;">
+
                     <label style="font-weight:bold; font-size:14px;">内容:</label>
                     <textarea id="post-content" class="btn" style="background:#fff; color:#333; border:1px solid #ccc; text-align:left; padding:10px; width:100%; height:120px; box-sizing:border-box; margin-bottom:15px;" placeholder="活動の内容を入力"></textarea>
-                    <button class="btn" style="background-color:#28a745;" onclick="submitPost()">投稿を保存する</button>
+                    <button class="btn" id="submit-post-btn" style="background-color:#28a745;" onclick="submitPost()">投稿を保存する</button>
                     <button class="btn btn-secondary" onclick="moveTo('kiks_katsudou')">キャンセル</button>
                 </div>
             `;
