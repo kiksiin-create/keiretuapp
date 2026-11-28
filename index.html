@@ -306,6 +306,11 @@
         return str.replace(/[&<>"']/g, m => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[m]));
     }
 
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-app.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-analytics.js";
+    // ▼ ここを追加
+    import { getFirestore } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
+
     // LocalStorageを使った活動データの管理（Firebase導入までの代わり）
     let localPosts = JSON.parse(localStorage.getItem('kiks_posts') || '[{"id":"1","category":"kiks","title":"新入生向け系列説明会を開催","content":"各系列の特長や学びについて委員が分かりやすく解説しました。","dateStr":"2026-04-10"},{"id":"2","category":"iin","title":"KIKS委員だより発行","content":"今年度の委員の活動予定をお知らせします！","dateStr":"2026-04-15"}]');
 
@@ -574,7 +579,11 @@
             return; // 処理をここで完結させる
         }
 
-        
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const analytics = getAnalytics(app);
+        // ▼ ここを追加（これでデータベースが使えるようになります）
+        const db = getFirestore(app);
         // --- 管理者ログイン画面 ---
         else if (currentStep === 'login_form') {
             html += `
