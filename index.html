@@ -237,6 +237,7 @@
             margin-top: 8px;
         }
     </style>
+        
 </head>
 <body>
 
@@ -321,6 +322,7 @@
         if (!str) return '';
         return str.replace(/[&<>"']/g, m => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[m]));
     }
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js">
 
     // --- Firebaseからデータを取得する関数（他デバイスと共有） ---
     window.fetchPostsFromDB = async function(category) {
